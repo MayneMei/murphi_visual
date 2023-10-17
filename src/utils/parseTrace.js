@@ -1,44 +1,71 @@
+import joint from 'jointjs';
+
 function parseTrace(trace) {
     const sections = trace.split('----------');
     const transitions = [];
     
-    // Step 1: Initialize processors using the start state section
-    const initialState = initializeState(sections[0]);
-    const processors = { ...initialState.procs }; // Create a copy to ensure immutability
+    // Start with the initial state
+    let currentState = initializeState(sections[0]);
+    const processors = { ...currentState.procs }; // Deep copy to ensure immutability
+    let homeNode = { ...currentState.homeNode };
 
-    // Step 2: Parse the rest of the trace sections
-    sections.slice(1, -1).forEach((section, index) => {
+    sections.slice(1, -1).forEach((section) => {
         const lines = section.trim().split('\n');
-        if (lines[0].startsWith('Rule')) {
-            const action = lines[0].split(',')[0].split(' ')[1];
-            transitions.push({
-                action: action,
-                from: processors, // Use the current processors state as from
-                to: {} // This will be updated below
-            });
+        
+        // Determine if the rule is for a processor or the home node
+        const isProcessorRule = lines[0].includes('Proc_');
+        const isHomeNodeRule = lines[0].includes('HomeType');
+        let procName;
+
+        if (isProcessorRule) {
+            procName = lines[0].split(',')[2].split(':')[1].trim();
         }
 
-        for (let i = 1; i < lines.length; i++) {
-            const match = lines[i].match(/Procs\[(Proc_\d+)\]\.(\w+):(.+)/);
-            if (match) {
-                const procName = match[1];
-                const attribute = match[2];
-                const value = match[3];
-                
-                // If the processor exists, update its state
+        lines.slice(1).forEach(line => {
+            if (isProcessorRule && line.startsWith(`Procs[${procName}]`)) {
+                const attribute = line.split('.')[1].split(':')[0];
+                const value = line.split(':')[1].trim();
                 if (processors[procName]) {
                     processors[procName][attribute] = value;
                 }
+            } else if (isHomeNodeRule && line.startsWith('HomeNode')) {
+                const attribute = line.split('.')[1].split(':')[0];
+                const value = line.split(':')[1].trim();
+                homeNode[attribute] = value;
+            } else if (line.startsWith('Net[')) {
+                const netInfo = line.split('.');
+                const procOrHome = netInfo[0].slice(4, -1);
+                const attribute = netInfo[1].split(':')[0];
+                const value = netInfo[1].split(':')[1].trim();
+                
+                // Since there are multiple attributes for 'Net', you may need to decide how to store them in the state.
+                // Here's an example that assumes you want to store them in the respective processor or HomeNode state:
+                if (isProcessorRule && procOrHome === procName) {
+                    processors[procName][attribute] = value;
+                } else if (isHomeNodeRule && procOrHome === 'HomeType') {
+                    homeNode[attribute] = value;
+                }
             }
-        }
+        });
 
-        if (transitions[index]) {
-            transitions[index].to = { ...processors }; // Update the 'to' state in the transition
-        }
+        // Capture the transition
+        transitions.push({
+            action: lines[0].split(',')[0].split(' ')[1],
+            from: currentState,
+            to: {
+                homeNode: { ...homeNode },
+                procs: { ...processors }
+            }
+        });
+
+        currentState = {
+            homeNode: { ...homeNode },
+            procs: { ...processors }
+        };
     });
 
-    return { 
-        homeNode: initialState.homeNode,
+    return {
+        homeNode: homeNode,
         processors: processors,
         transitions: transitions 
     };
