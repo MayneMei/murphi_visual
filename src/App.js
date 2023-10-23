@@ -30,15 +30,19 @@ function parseTrace(trace) {
             state: undefined,
             val: undefined,
             mtype: undefined,
-            "Order id": currentOrderId
+            "Order id": currentOrderId,
+            actions: isProcessorRule ? lines[0] : undefined
         };
 
         const currentHomeNode = {
           state: undefined,
           val: undefined,
           owner: undefined,
-          "Order id": currentOrderId
+          "Order id": currentOrderId,
+          actions: isHomeNodeRule ? lines[0] : undefined
       };
+    
+
         lines.slice(1).forEach(line => {
             if (isProcessorRule && line.startsWith(`Procs[${procName}]`)) {
                 const attribute = line.split('.')[1].split(':')[0];
@@ -85,108 +89,83 @@ function parseTrace(trace) {
   });
 
   const graphs = {};
-  const getHeight = (length) => 60 + length * 240;
 
   console.log(processors);
   console.log(homeNode);
   for (let procName in processors) {
-      if (!graphs[procName]) {
-          graphs[procName] = new joint.dia.Graph();
-      }
-      let graphHeight = getHeight(processors[procName].length);
-      processors[procName].forEach((procInstance, index) => {
-          const yPosition = 60 + index * 240; // Adjust this value as per your needs for spacing
-          const rect = new joint.shapes.standard.Rectangle();
-          rect.position(10, yPosition);
-          rect.resize(200, 40);
-          rect.attr({
-              body: {
-                  fill: 'blue',
-              },
-              label: {
-                  text: procName + " #" + (index + 1),
-                  fill: 'white'
-              }
-          });
-          rect.addTo(graphs[procName]);
-          
-          let yOffset = yPosition + 50;
-          for (let attr in procInstance) {
-              const text = new joint.shapes.standard.TextBlock();
-              text.position(10, yOffset);
-              text.resize(200, 40);
-              text.attr({
-                  label: {
-                      text: attr + ": " + procInstance[attr],
-                  }
-              });
-              text.addTo(graphs[procName]);
-              yOffset += 50;
-          }
-      });
-  }
+    if (!graphs[procName]) {
+        graphs[procName] = new joint.dia.Graph();
+    }
+    processors[procName].forEach((procInstance, index) => {
+        const yPosition = 60 + index * 240; 
+        const rect = new joint.shapes.standard.Rectangle();
+        rect.position(10, yPosition);
+        rect.resize(200, 40 + Object.keys(procInstance).length * 20);
+        rect.attr({
+            body: {
+                fill: 'blue',
+            },
+            label: {
+                text: procName + " #" + (index + 1) + "\n" + 
+                Object.entries(procInstance)
+                      .filter(([key]) => key !== 'actions')
+                      .map(([key, value]) => key + ": " + value).join('\n'),
+          fill: 'white',
+            }
+        });
+        rect.addTo(graphs[procName]);
+        processors[procName][index].id = rect.id;
+        if (index > 0) {
+            const link = new joint.shapes.standard.Link();
+            link.source({ id: processors[procName][index - 1].id });
+            link.target({ id: rect.id });
+            const actionText = procInstance.actions; // Replaced the conditional check with just procInstance.action
+            link.labels([{
+                attrs: { text: { text: actionText } }
+            }]);
+            link.addTo(graphs[procName]);
+        }
+    });
+}
 
-  let yOffsetGlobal = 60;
-  if (!graphs['HomeNode']) {
-    graphs['HomeNode'] = new joint.dia.Graph();
-  }
-  homeNode.forEach((homeNodeInstance, index) => {
+let yOffsetGlobal = 60;
+if (!graphs['HomeNode']) {
+  graphs['HomeNode'] = new joint.dia.Graph();
+}
+homeNode.forEach((homeNodeInstance, index) => {
+    let attributesText = 'HomeNode #' + (index + 1) + "\n";
+    for (let attr in homeNodeInstance) {
+        if(attr !== 'actions') {
+            attributesText += attr + ": " + homeNodeInstance[attr] + "\n";
+        }    
+    }
+
     const homeRect = new joint.shapes.standard.Rectangle();
     homeRect.position(10, yOffsetGlobal);
-    homeRect.resize(200, 40);
+    homeRect.resize(200, 40 + Object.keys(homeNodeInstance).length * 20); // 20 is estimated height per attribute line
     homeRect.attr({
         body: {
             fill: 'green',
         },
         label: {
-            text: 'HomeNode #' + (index + 1),
+            text: attributesText,
             fill: 'white'
         }
     });
     homeRect.addTo(graphs['HomeNode']);
-
-    let yOffset = yOffsetGlobal + 50;
-    for (let attr in homeNodeInstance) {
-        const text = new joint.shapes.standard.TextBlock();
-        text.position(10, yOffset);
-        text.resize(200, 40);
-        text.attr({
-            label: { text: attr + ": " + homeNodeInstance[attr],
-        }
-      });
-      text.addTo(graphs['HomeNode']);
-        yOffset += 50;
+    homeNode[index].id = homeRect.id;
+    if (index > 0) {
+        const link = new joint.shapes.standard.Link();
+        link.source({ id: homeNode[index - 1].id });
+        link.target({ id: homeRect.id });
+        const actionText = homeNodeInstance.actions;
+        link.labels([{
+            attrs: { text: { text: actionText } }
+        }]);
+        link.addTo(graphs['HomeNode']);
     }
-    yOffsetGlobal = yOffset + 10; // Adjust the gap between different homeNode instances
+    yOffsetGlobal = yOffsetGlobal + 40 + Object.keys(homeNodeInstance).length * 20 + 10; // Adjust the gap between different homeNode instances
 });
-
-  // const homeRect = new joint.shapes.standard.Rectangle();
-  // homeRect.position(10, 10);
-  // homeRect.resize(200, 40);
-  // homeRect.attr({
-  //     body: {
-  //         fill: 'green',
-  //     },
-  //     label: {
-  //         text: 'HomeNode',
-  //         fill: 'white'
-  //     }
-  // });
-  // homeRect.addTo(graphs['HomeNode']);
-
-  // let yOffset = yPosition + 50;
-  // for (let attr in homeNode) {
-  //     const text = new joint.shapes.standard.TextBlock();
-  //     text.position(10, yOffset);
-  //     text.resize(200, 40);
-  //     text.attr({
-  //         label: {
-  //             text: attr + ": " + homeNode[attr],
-  //         }
-  //     });
-  //     text.addTo(graphs['HomeNode']);
-  //     yOffset += 50;
-  // }
 
   return {
       homeNode: homeNode,
@@ -206,7 +185,8 @@ function initializeState(startState) {
       state: undefined,
       owner: undefined,
       val: undefined,
-      "Order id": undefined
+      "Order id": undefined,
+      actions: undefined
   };
 
   // Populate HomeNode based on the first 3 lines
@@ -225,7 +205,8 @@ function initializeState(startState) {
       state: undefined,
       val: undefined,
       mtype: undefined,
-      "Order id": undefined
+      "Order id": undefined,
+      actions:undefined
   };
 
   // Initialize processors

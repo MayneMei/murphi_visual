@@ -11,7 +11,7 @@ function FlowChart({ graphs }) {
                 el: document.getElementById(graphName),
                 model: graphs[graphName],
                 width: 300,
-                height: 200,
+                height: 1200,
                 gridSize: 10
             });
         }
