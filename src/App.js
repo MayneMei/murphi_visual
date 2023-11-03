@@ -90,17 +90,28 @@ function parseTrace(trace) {
 
   const graphs = {};
 
-  console.log(processors);
-  console.log(homeNode);
+  const getMessageColor = (message) => {
+    if (message.includes("request")) {
+      return 'yellow';
+    } else if (message.includes("forward")) {
+      return 'green';
+    } else if (message.includes("receive-net")) {
+      return 'red';
+    }
+    return 'white';
+  };
+
+//   console.log(processors);
+//   console.log(homeNode);
   for (let procName in processors) {
     if (!graphs[procName]) {
         graphs[procName] = new joint.dia.Graph();
     }
     processors[procName].forEach((procInstance, index) => {
-        const yPosition = 60 + index * 240; 
+        const xPosition = 60 + index * 600; 
         const rect = new joint.shapes.standard.Rectangle();
-        rect.position(10, yPosition);
-        rect.resize(200, 40 + Object.keys(procInstance).length * 20);
+        rect.position(xPosition, 10);
+        rect.resize(40 + Object.keys(procInstance).length * 20, 200);
         rect.attr({
             body: {
                 fill: 'blue',
@@ -120,15 +131,21 @@ function parseTrace(trace) {
             link.source({ id: processors[procName][index - 1].id });
             link.target({ id: rect.id });
             const actionText = procInstance.actions; // Replaced the conditional check with just procInstance.action
+            const messageColor = getMessageColor(actionText); // get color based on message type
             link.labels([{
-                attrs: { text: { text: actionText } }
+                attrs: { 
+                    text: { text: Object.entries(procInstance)
+                        .filter(([key]) => key === 'actions' || key === "Order id")
+                        .map(([key, value]) => key + ": " + value).join('\n'), },
+                    rect: { fill: messageColor } 
+                }
             }]);
             link.addTo(graphs[procName]);
         }
     });
 }
 
-let yOffsetGlobal = 60;
+let xOffsetGlobal = 60;
 if (!graphs['HomeNode']) {
   graphs['HomeNode'] = new joint.dia.Graph();
 }
@@ -141,8 +158,8 @@ homeNode.forEach((homeNodeInstance, index) => {
     }
 
     const homeRect = new joint.shapes.standard.Rectangle();
-    homeRect.position(10, yOffsetGlobal);
-    homeRect.resize(200, 40 + Object.keys(homeNodeInstance).length * 20); // 20 is estimated height per attribute line
+    homeRect.position(xOffsetGlobal, 10);
+    homeRect.resize(40 + Object.keys(homeNodeInstance).length * 20, 200); // 20 is estimated height per attribute line
     homeRect.attr({
         body: {
             fill: 'green',
@@ -159,12 +176,18 @@ homeNode.forEach((homeNodeInstance, index) => {
         link.source({ id: homeNode[index - 1].id });
         link.target({ id: homeRect.id });
         const actionText = homeNodeInstance.actions;
+        const messageColor = getMessageColor(actionText); // get color based on message type
         link.labels([{
-            attrs: { text: { text: actionText } }
+          attrs: { 
+            text: { text: Object.entries(homeNodeInstance)
+                .filter(([key]) => key === 'actions' || key === "Order id")
+                .map(([key, value]) => key + ": " + value).join('\n'), },
+            rect: { fill: messageColor } 
+          }
         }]);
         link.addTo(graphs['HomeNode']);
     }
-    yOffsetGlobal = yOffsetGlobal + 40 + Object.keys(homeNodeInstance).length * 20 + 10; // Adjust the gap between different homeNode instances
+    xOffsetGlobal = xOffsetGlobal + 600; // Adjust the gap between different homeNode instances
 });
 
   return {
