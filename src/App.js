@@ -1,99 +1,51 @@
 import React, { useState } from 'react';
 import FlowChart from './components/FlowChart';
+import { parseTrace } from './utils/parseTrace';
 import * as joint from 'jointjs';
 
-function parseTrace(trace) {
-    const sections = trace.split('----------');
-    const transitions = [];
-  
-    let currentState = initializeState(sections[0]);
+
+function ParseBlock(trace) {
+    console.log(trace[0]);
+    let currentState = initializeState(trace[0]);
+
+    // const transitions = [];
     const processors = { ...currentState.procs };
+
     let homeNode = [...currentState.homeNode];
-    let currentOrderId = 0;
-
-    sections.slice(1, -1).forEach((section) => {
-        const lines = section.trim().split('\n');
-        
-        currentOrderId += 1;
-        const isProcessorRule = lines[0].includes('Proc_');
-        const isHomeNodeRule = lines[0].includes('HomeType');
-        let procName;
-        if (isProcessorRule) {
-            procName = lines[0].split('n:')[1].split(" ")[0].trim();
-        }
-
-        if (isProcessorRule && !processors[procName]) {
-            processors[procName] = [];
-        }
-        
-        const currentProcessor = {
-            state: undefined,
-            val: undefined,
-            mtype: undefined,
-            "Order id": currentOrderId,
-            actions: isProcessorRule ? lines[0] : undefined
-        };
-
-        const currentHomeNode = {
-          state: undefined,
-          val: undefined,
-          owner: undefined,
-          "Order id": currentOrderId,
-          actions: isHomeNodeRule ? lines[0] : undefined
-      };
     
-
-        lines.slice(1).forEach(line => {
-            if (isProcessorRule && line.startsWith(`Procs[${procName}]`)) {
-                const attribute = line.split('.')[1].split(':')[0];
-                const value = line.split(':')[1].trim();
-                currentProcessor[attribute] = value;
-            } else if (isHomeNodeRule && line.startsWith('HomeNode')) {
-                const attribute = line.split('.')[1].split(':')[0];
-                const value = line.split(':')[1].trim();
-                currentHomeNode[attribute] = value;
-            } else if (line.startsWith('Net[')) {
-                const netInfo = line.split('.');
-                const procOrHome = netInfo[0].slice(4, -1);
-                const attribute = netInfo[1].split(':')[0];
-                const value = netInfo[1].split(':')[1].trim();
-                
-                if (isProcessorRule && procOrHome === procName) {
-                    currentProcessor[attribute] = value;
-                } else if (isHomeNodeRule && procOrHome === 'HomeType') {
-                  currentHomeNode[attribute] = value;
-                }
-            }
-        });
-        
-        if (isProcessorRule) {
-            processors[procName].push(currentProcessor);
-        } else {
-          homeNode.push(currentHomeNode);
+    for(let i = 1; i < trace.length; i++){
+        let block = trace[i]['block'];
+        if(trace[i]['attributes']['HomeNode'].state != homeNode[homeNode.length - 1].state){
+            homeNode[homeNode.length] = { state: trace[i]['attributes']['HomeNode'].state, 
+                                            owner:trace[i]['attributes']['HomeNode'].owner,
+                                            val: trace[i]['attributes']['HomeNode'].val,
+                                            'Order id': block
+        };
         }
+        let procsArray = trace[i]['attributes']['Procs'];
         
-
-        transitions.push({
-            action: lines[0].split(',')[0].split(' ')[1],
-            from: currentState,
-            to: {
-                homeNode: { ...homeNode },
-                procs: { ...processors }
+        for(let j = 0; j < procsArray.length; j++){
+            const procName = Object.keys(procsArray[j])[0];
+            let processor = processors[procName];
+            let block_state = trace[i]['attributes']['Procs'][j][procName].state;
+            let block_val = trace[i]['attributes']['Procs'][j][procName].val;
+            if(processor[processor.length - 1].state != block_state){ 
+                processor[processor.length] = {state: block_state, val: block_val, 'Order id':block};
             }
-        });
+        }
+    }
+    console.log(processors);
+    console.log(homeNode);
 
-        currentState = {
-          homeNode: { ...homeNode },
-          procs: { ...processors }
-      };
-  });
+
+  // --------------- add graphs and links
 
   const graphs = {};
 
   const getMessageColor = (message) => {
-    if (message.includes("request")) {
+    if (message.includes("ReadReq")) {
       return 'yellow';
-    } else if (message.includes("forward")) {
+    } else if (message.includes("ReadAck")) {
       return 'green';
     } else if (message.includes("receive-net")) {
       return 'red';
@@ -119,24 +71,45 @@ function parseTrace(trace) {
             label: {
                 text: procName + " #" + (index + 1) + "\n" + 
                 Object.entries(procInstance)
-                      .filter(([key]) => key !== 'actions')
                       .map(([key, value]) => key + ": " + value).join('\n'),
           fill: 'white',
             }
         });
         rect.addTo(graphs[procName]);
-        processors[procName][index].id = rect.id;
+
+        var actionText;
+        var source;
+        var orderID;
+
+        if(trace[processors[procName][index]['Order id']].block > 0){
+            if(trace[processors[procName][index]['Order id'] - 1] && 
+            trace[processors[procName][index]['Order id'] - 1].attributes &&
+            Array.isArray(trace[processors[procName][index]['Order id'] - 1].attributes.Net) &&
+            trace[processors[procName][index]['Order id'] - 1].attributes.Net.length > 0){
+                let net = trace[processors[procName][index]['Order id'] - 1].attributes.Net[0];
+                let key = Object.keys(net)[0];
+                actionText = net[key][".mtype"];
+                source = net[key][".src"];
+                orderID = processors[procName][index]['Order id'] - 1;
+            } else {
+                let net = trace[processors[procName][index]['Order id']].attributes.Net[0];
+                let key = Object.keys(net)[0];
+                actionText = net[key][".mtype"];
+                source = net[key][".src"];
+                orderID = processors[procName][index]['Order id'];
+            }
+        }
+
+        processors[procName][index]['Order id'] = rect.id;
+
         if (index > 0) {
             const link = new joint.shapes.standard.Link();
-            link.source({ id: processors[procName][index - 1].id });
+            link.source({ id: processors[procName][index - 1]['Order id'] });
             link.target({ id: rect.id });
-            const actionText = procInstance.actions; // Replaced the conditional check with just procInstance.action
             const messageColor = getMessageColor(actionText); // get color based on message type
             link.labels([{
                 attrs: { 
-                    text: { text: Object.entries(procInstance)
-                        .filter(([key]) => key === 'actions' || key === "Order id")
-                        .map(([key, value]) => key + ": " + value).join('\n'), },
+                    text: { text: `Action: ${actionText}\nSource: ${source}\n Order Id ${orderID}` },
                     rect: { fill: messageColor } 
                 }
             }]);
@@ -170,20 +143,40 @@ homeNode.forEach((homeNodeInstance, index) => {
         }
     });
     homeRect.addTo(graphs['HomeNode']);
+    var actionText;
+    var source;
+    var orderID;
+    console.log("trace[homeNodeInstance['Order id']");
+    console.log(homeNodeInstance['Order id']);
+    if(trace[homeNodeInstance['Order id']].block > 0){
+        if(trace[homeNodeInstance['Order id'] - 1] && 
+        trace[homeNodeInstance['Order id'] - 1].attributes &&
+        Array.isArray(trace[homeNodeInstance['Order id'] - 1].attributes.Net) &&
+        trace[homeNodeInstance['Order id'] - 1].attributes.Net.length > 0){
+            let net = trace[homeNodeInstance['Order id'] - 1].attributes.Net[0];
+            let key = Object.keys(net)[0];
+            actionText = net[key][".mtype"];
+            source = net[key][".src"];
+            orderID = homeNodeInstance['Order id'] - 1;
+        } else {
+            let net = trace[homeNodeInstance['Order id']].attributes.Net[0];
+            let key = Object.keys(net)[0];
+            actionText = net[key][".mtype"];
+            source = net[key][".src"];
+            orderID = homeNodeInstance['Order id'];
+        }
+    }
     homeNode[index].id = homeRect.id;
     if (index > 0) {
         const link = new joint.shapes.standard.Link();
         link.source({ id: homeNode[index - 1].id });
         link.target({ id: homeRect.id });
-        const actionText = homeNodeInstance.actions;
         const messageColor = getMessageColor(actionText); // get color based on message type
         link.labels([{
-          attrs: { 
-            text: { text: Object.entries(homeNodeInstance)
-                .filter(([key]) => key === 'actions' || key === "Order id")
-                .map(([key, value]) => key + ": " + value).join('\n'), },
-            rect: { fill: messageColor } 
-          }
+            attrs: { 
+                text: { text: `Action: ${actionText}\nSource: ${source}\nOrder Id: ${orderID}` },
+                rect: { fill: messageColor } 
+            }
         }]);
         link.addTo(graphs['HomeNode']);
     }
@@ -191,9 +184,9 @@ homeNode.forEach((homeNodeInstance, index) => {
 });
 
   return {
-      homeNode: homeNode,
-      graphs: graphs,
-      transitions: transitions 
+        homeNode: homeNode,
+        graphs: graphs,
+    //   transitions: transitions 
   };
 }
 
@@ -201,15 +194,13 @@ homeNode.forEach((homeNodeInstance, index) => {
 
 
 function initializeState(startState) {
-  const lines = startState.trim().split('\n');
   
   // Default attributes for HomeNode
   const defaultHomeNode = {
       state: undefined,
       owner: undefined,
       val: undefined,
-      "Order id": undefined,
-      actions: undefined
+      "Order id":startState['block']
   };
 
   // Populate HomeNode based on the first 3 lines
@@ -218,47 +209,40 @@ function initializeState(startState) {
   // console.log(lines[1].split(':')[1]);
   // console.log(lines[2].split(':')[1]);
   // console.log(lines[3].split(':')[1]);
-    homeNode[0].state = lines[1].split(':')[1];
-    homeNode[0].owner = lines[2].split(':')[1];
-    homeNode[0].val = lines[3].split(':')[1];
+    homeNode[0].state = startState['attributes']['HomeNode'].state;
+    homeNode[0].owner = startState['attributes']['HomeNode'].owner;
+    homeNode[0].val = startState['attributes']['HomeNode'].val;
+    homeNode[0]['Order id'] = startState['block'];
   // console.log(homeNode);
+  console.log(homeNode);
+//   // Default attributes for Procs
+    const defaultProc = {
+        state: undefined,
+        val: undefined,
+        "Order id": startState['block'],
+    };
 
-  // Default attributes for Procs
-  const defaultProc = {
-      state: undefined,
-      val: undefined,
-      mtype: undefined,
-      "Order id": undefined,
-      actions:undefined
-  };
+//   // Initialize processors
+    const procs = {};
+    const procsArray = startState['attributes']['Procs'];
+    for(let i =0; i < startState['attributes']['Procs'].length; i++){
+        const procName = Object.keys(procsArray[i])[0];
+        if (!procs[procName]) {
+            procs[procName] = []; // Initialize as an array if not present
+        }
+        procs[procName][0] = { ...defaultProc };
+        procs[procName][0].state = procsArray[i].state;
+        procs[procName][0].val = procsArray[i].val;
+        procs[procName][0]['Order id'] = startState['block'];
+    }
 
-  // Initialize processors
-  const procs = {};
-  for(let i=4; i<lines.length; i++) {
-      const match = lines[i].match(/Procs\[(Proc_\d+)\]\.(\w+):(.+)/);
-      if (match) {
-          const procName = match[1];
-          const attribute = match[2];
-          const value = match[3];
-          
-          if (!procs[procName]) {
-            procs[procName] = [];
-          }
-          if (!procs[procName][0]) {
-            procs[procName][0] = { ...defaultProc };
-          }
-          
-          procs[procName][attribute] = value;
-      }
-  }
-
-  // Combine all in a single state object
-  const initialState = {
-      homeNode: homeNode,
-      procs: procs
-  };
-
-  return initialState;
+//   // Combine all in a single state object
+    const initialState = {
+        homeNode: homeNode,
+        procs: procs
+    };
+    console.log(initialState);
+    return initialState;
 }
 
 
@@ -268,10 +252,17 @@ function App() {
   const [graphs, setGraphs] = useState({});
   
   const handleParseClick = () => {
-      const parsedData = parseTrace(inputData);
-      setProcessors(parsedData.processors);
-      setGraphs(parsedData.graphs);
-  };
+    // 假设 parseTrace 函数正确解析原始追踪数据并返回一个字符串
+    const parsedBlock = parseTrace(inputData);
+
+    // 然后使用 ParseBlock 函数来处理这个字符串，生成图表需要的数据
+    const parsedData = ParseBlock(parsedBlock);
+
+    // 更新状态，以便 FlowChart 组件可以使用新的图表数据
+    setProcessors(parsedData.processors); // 如果需要
+    setGraphs(parsedData.graphs);
+};
+
 
   return (
       <div className="App">

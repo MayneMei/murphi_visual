@@ -1,125 +1,102 @@
-import joint from 'jointjs';
 
-function parseTrace(trace) {
+
+export function parseTrace(trace) {
     const sections = trace.split('----------');
-    const transitions = [];
-    
-    // Start with the initial state
-    let currentState = initializeState(sections[0]);
-    const processors = { ...currentState.procs }; // Deep copy to ensure immutability
-    let homeNode = { ...currentState.homeNode };
+    const blocks = [];
 
-    sections.slice(1, -1).forEach((section) => {
+    sections.forEach((section, index) => {
+        if (section.trim() === "") {
+            return; // 跳过空白部分
+        }
+
         const lines = section.trim().split('\n');
-        
-        // Determine if the rule is for a processor or the home node
-        const isProcessorRule = lines[0].includes('Proc_');
-        const isHomeNodeRule = lines[0].includes('HomeType');
-        let procName;
-
-        if (isProcessorRule) {
-            procName = lines[0].split(',')[2].split(':')[1].trim();
-        }
-
-        lines.slice(1).forEach(line => {
-            if (isProcessorRule && line.startsWith(`Procs[${procName}]`)) {
-                const attribute = line.split('.')[1].split(':')[0];
-                const value = line.split(':')[1].trim();
-                if (processors[procName]) {
-                    processors[procName][attribute] = value;
-                }
-            } else if (isHomeNodeRule && line.startsWith('HomeNode')) {
-                const attribute = line.split('.')[1].split(':')[0];
-                const value = line.split(':')[1].trim();
-                homeNode[attribute] = value;
-            } else if (line.startsWith('Net[')) {
-                const netInfo = line.split('.');
-                const procOrHome = netInfo[0].slice(4, -1);
-                const attribute = netInfo[1].split(':')[0];
-                const value = netInfo[1].split(':')[1].trim();
-                
-                // Since there are multiple attributes for 'Net', you may need to decide how to store them in the state.
-                // Here's an example that assumes you want to store them in the respective processor or HomeNode state:
-                if (isProcessorRule && procOrHome === procName) {
-                    processors[procName][attribute] = value;
-                } else if (isHomeNodeRule && procOrHome === 'HomeType') {
-                    homeNode[attribute] = value;
-                }
-            }
-        });
-
-        // Capture the transition
-        transitions.push({
-            action: lines[0].split(',')[0].split(' ')[1],
-            from: currentState,
-            to: {
-                homeNode: { ...homeNode },
-                procs: { ...processors }
-            }
-        });
-
-        currentState = {
-            homeNode: { ...homeNode },
-            procs: { ...processors }
+        let block = {
+            block: index, // 块编号从 0 开始
+            attributes: {}
         };
-    });
 
-    return {
-        homeNode: homeNode,
-        processors: processors,
-        transitions: transitions 
-    };
-}
-
-
-
-function initializeState(startState) {
-    const lines = startState.trim().split('\n');
-    
-    // Default attributes for HomeNode
-    const defaultHomeNode = {
-        State: undefined,
-        Owner: undefined,
-        Val: undefined,
-        "Order id": undefined
-    };
-
-    // Populate HomeNode based on the first 3 lines
-    const homeNode = { ...defaultHomeNode };
-    homeNode.State = lines[1].split(':')[1];
-    homeNode.Owner = lines[2].split(':')[1];
-    homeNode.Val = lines[3].split(':')[1];
-
-    // Default attributes for Procs
-    const defaultProc = {
-        State: undefined,
-        Val: undefined,
-        mtype: undefined,
-        "Order id": undefined
-    };
-
-    // Initialize processors
-    const procs = {};
-    for(let i=4; i<lines.length; i++) {
-        const match = lines[i].match(/Procs\[(Proc_\d+)\]\.(\w+):(.+)/);
-        if (match) {
-            const procName = match[1];
-            const attribute = match[2];
-            const value = match[3];
-            
-            if (!procs[procName]) {
-                procs[procName] = { ...defaultProc };
+        lines.forEach(line => {
+            // 根据行的起始词汇决定如何解析该行
+            if (line.startsWith('HomeNode')) {
+                parseHomeNode(line, block);
+            } else if (line.startsWith('Procs')) {
+                parseProcessor(line, block);
+            } else if (line.startsWith('InBox')) {
+                parseInBox(line, block);
+            } else if (line.startsWith('Net')) {
+                parseNet(line, block);
             }
-            
-            procs[procName][attribute] = value;
-        }
-    }
+        });
 
-    // Combine all in a single state object
-    const initialState = {
-        homeNode: homeNode,
-        procs: procs
-    };
-
-    return initialState;
+        blocks.push(block);
+    });
+    console.log(blocks);
+    return blocks;
 }
+
+function parseHomeNode(line, block) {
+    // 将行分割为键和值，然后提取属性和值
+    const [key, value] = line.split(':').map(s => s.trim());
+    const attribute = key.split('.')[1];
+    // 确保 HomeNode 对象存在并更新其属性
+    block.attributes.HomeNode = block.attributes.HomeNode || {};
+    block.attributes.HomeNode[attribute] = value;
+}
+
+function parseProcessor(line, block) {
+    // 解析处理器行，并将其分割为键和值
+    const [procKey, value] = line.split(':').map(s => s.trim());
+
+    // 正则表达式匹配处理器名称，例如 Proc_1, Proc_2
+    const procMatch = procKey.match(/\[([^\]]+)\]/);
+    if (!procMatch) {
+        return; // 如果没有匹配到处理器名称，不进行进一步处理
+    }
+    const proc = procMatch[1];
+
+    // 提取属性名称，例如 state, val
+    const attribute = procKey.split('.').pop();
+
+    // 创建或更新特定处理器的属性
+    block.attributes.Procs = block.attributes.Procs || [];
+    let procObj = block.attributes.Procs.find(p => Object.keys(p)[0] === proc);
+    if (!procObj) {
+        procObj = { [proc]: {} };
+        block.attributes.Procs.push(procObj);
+    }
+    procObj[proc][attribute] = value;
+}
+
+
+function parseInBox(line, block) {
+    // 解析 InBox 行并分割为键和值
+    const [inboxKey, value] = line.split(':').map(s => s.trim());
+    const [inbox, attribute] = inboxKey.split('.');
+    // 创建或更新特定 InBox 的属性
+    block.attributes.InBox = block.attributes.InBox || [];
+    let inboxObj = block.attributes.InBox.find(i => Object.keys(i)[0] === inbox);
+    if (!inboxObj) {
+        inboxObj = { [inbox]: {} };
+        block.attributes.InBox.push(inboxObj);
+    }
+    inboxObj[inbox][attribute] = value;
+}
+
+function parseNet(line, block) {
+    // 提取并分割行为键和值
+    const [netKey, value] = line.split(':').map(s => s.trim());
+    // 进一步分割键来获取 Net 的属性和标识
+    const [net, attribute] = netKey.split('}').map(s => s.trim());
+    const netId = net.split('[')[1].split(']')[0];  // 提取 Proc_1 之类的标识
+
+    // 创建或更新特定 Net 的属性
+    block.attributes.Net = block.attributes.Net || [];
+    let netObj = block.attributes.Net.find(n => Object.keys(n)[0] === netId);
+    if (!netObj) {
+        netObj = { [netId]: {} };
+        block.attributes.Net.push(netObj);
+    }
+    netObj[netId][attribute] = value;
+}
+
+// export default parseTrace;
