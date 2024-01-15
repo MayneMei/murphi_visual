@@ -21,11 +21,13 @@ export function parseTrace(trace) {
                 parseHomeNode(line, block);
             } else if (line.startsWith('Procs')) {
                 parseProcessor(line, block);
-            } else if (line.startsWith('InBox')) {
-                parseInBox(line, block);
-            } else if (line.startsWith('Net')) {
+            } 
+            else if (line.startsWith('Net')) {
                 parseNet(line, block);
             }
+            // else if (line.startsWith('InBox')) {
+            //     parseInBox(line, block);
+            // } 
         });
 
         blocks.push(block);
@@ -68,19 +70,31 @@ function parseProcessor(line, block) {
 }
 
 
-function parseInBox(line, block) {
-    // 解析 InBox 行并分割为键和值
-    const [inboxKey, value] = line.split(':').map(s => s.trim());
-    const [inbox, attribute] = inboxKey.split('.');
-    // 创建或更新特定 InBox 的属性
-    block.attributes.InBox = block.attributes.InBox || [];
-    let inboxObj = block.attributes.InBox.find(i => Object.keys(i)[0] === inbox);
-    if (!inboxObj) {
-        inboxObj = { [inbox]: {} };
-        block.attributes.InBox.push(inboxObj);
-    }
-    inboxObj[inbox][attribute] = value;
-}
+// function parseInBox(line, block) {
+//     // Split the line into key and value
+//     const [inboxKey, value] = line.split(':').map(s => s.trim());
+//     console.log(line);
+//     // Extract the inbox type, index, and property name
+//     const inboxMatch = inboxKey.match(/InBox\[([^\]]+)\]\[(\d+)\]\.(\w+)/);
+//     console.log(inboxMatch);
+//     if (!inboxMatch) {
+//         return; // If the pattern does not match, skip this line
+//     }
+//     const [, inboxType, index, property] = inboxMatch;
+
+//     // Ensure the structure for storing inbox data is initialized
+//     if (!block.attributes.InBox[inboxType]) {
+//         block.attributes.InBox[inboxType] = [];
+//     }
+
+//     // Ensure the specific index for this inbox type is initialized
+//     if (!block.attributes.InBox[inboxType][index]) {
+//         block.attributes.InBox[inboxType][index] = {};
+//     }
+
+//     // Store the property and its value
+//     block.attributes.InBox[inboxType][index][property] = value;
+// }
 
 function parseNet(line, block) {
     // 提取并分割行为键和值

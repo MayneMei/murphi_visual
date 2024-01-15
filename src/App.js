@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import FlowChart from './components/FlowChart';
 import { parseTrace } from './utils/parseTrace';
+import { parseInbox } from './utils/parseInbox';
 import * as joint from 'jointjs';
 
 
-function ParseBlock(trace) {
+function ParseBlock(trace, inbox) {
     console.log(trace[0]);
+    console.log("INBOX");
+    console.log(inbox);
     let currentState = initializeState(trace[0]);
 
     // const transitions = [];
@@ -34,9 +37,6 @@ function ParseBlock(trace) {
             }
         }
     }
-    console.log(processors);
-    console.log(homeNode);
-
 
   // --------------- add graphs and links
 
@@ -47,8 +47,12 @@ function ParseBlock(trace) {
       return 'yellow';
     } else if (message.includes("ReadAck")) {
       return 'green';
-    } else if (message.includes("receive-net")) {
+    } else if (message.includes("RecallReq")) {
       return 'red';
+    } else if (message.includes("WBReq")) {
+        return 'blue';
+    } else if (message.includes("WBReq")) {
+        return 'WBAck';
     }
     return 'white';
   };
@@ -63,7 +67,7 @@ function ParseBlock(trace) {
         const xPosition = 60 + index * 600; 
         const rect = new joint.shapes.standard.Rectangle();
         rect.position(xPosition, 10);
-        rect.resize(40 + Object.keys(procInstance).length * 20, 200);
+        rect.resize(60 + Object.keys(procInstance).length * 20, 200);
         rect.attr({
             body: {
                 fill: 'blue',
@@ -183,8 +187,63 @@ homeNode.forEach((homeNodeInstance, index) => {
     xOffsetGlobal = xOffsetGlobal + 600; // Adjust the gap between different homeNode instances
 });
 
+
+    if (!graphs['Inbox']) {
+        graphs['Inbox'] = new joint.dia.Graph();
+    }
+
+    const inboxLabel = new joint.shapes.standard.TextBlock();
+    inboxLabel.position(60); 
+    inboxLabel.resize(200, 40); // Resize as needed
+    inboxLabel.attr({
+        body: {
+            fill: 'transparent'
+        },
+        label: {
+            text: 'Current Message Queue',
+            fill: 'black',
+            fontSize: 14,
+            fontWeight: 'bold'
+        }
+    });
+    inboxLabel.addTo(graphs['Inbox']);
+
+    let xOffset = 60;
+    let yOffset = 60;
+    Object.keys(inbox.attributes).forEach((inboxType, typeIndex) => {
+        // Same Y-offset for all messages within an inbox type
+        let yOffsetInboxType = yOffset + (typeIndex * 100); // Adjust spacing between each inbox type
+    
+        inbox.attributes[inboxType].forEach((message, messageIndex) => {
+            const messageText = inboxType + `   Message ${messageIndex + 1}: ` +
+                                `${Object.entries(message).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
+    
+            const messageRect = new joint.shapes.standard.Rectangle();
+            messageRect.position(xOffset + (messageIndex * 350), yOffsetInboxType); // Increment X-offset for each message
+            messageRect.resize(300, 60); // Adjust size to fit content
+            messageRect.attr({
+                body: {
+                    fill: 'lightblue',
+                },
+                label: {
+                    text: messageText,
+                    fill: 'black',
+                    fontSize: 14,
+                    textWrap: {
+                        width: -10, // Padding within the rectangle
+                        height: 'auto', // Auto-wrap text by height
+                        ellipsis: true // Use an ellipsis if the text is too long
+                    }
+                }
+            });
+            messageRect.addTo(graphs['Inbox']);
+        });
+    
+        // No need to adjust yOffset here because we want a horizontal layout
+    });
+    
+
   return {
-        homeNode: homeNode,
         graphs: graphs,
     //   transitions: transitions 
   };
@@ -247,33 +306,30 @@ function initializeState(startState) {
 
 
 function App() {
-  const [inputData, setInputData] = useState('');
-  const [processors, setProcessors] = useState([]);
-  const [graphs, setGraphs] = useState({});
-  
-  const handleParseClick = () => {
-    // 假设 parseTrace 函数正确解析原始追踪数据并返回一个字符串
-    const parsedBlock = parseTrace(inputData);
+    const [inputData, setInputData] = useState('');
+    const [graphs, setGraphs] = useState({});
 
-    // 然后使用 ParseBlock 函数来处理这个字符串，生成图表需要的数据
-    const parsedData = ParseBlock(parsedBlock);
+    const handleParseClick = () => {
+        const parsedBlock = parseTrace(inputData);
+        const parsedInbox = parseInbox(inputData); // Parse the inbox data
 
-    // 更新状态，以便 FlowChart 组件可以使用新的图表数据
-    setProcessors(parsedData.processors); // 如果需要
-    setGraphs(parsedData.graphs);
-};
+        // Process the trace and inbox data
+        const parsedData = ParseBlock(parsedBlock, parsedInbox);
 
+        setGraphs(parsedData.graphs);
+    };
 
-  return (
-      <div className="App">
-          <textarea 
-              value={inputData}
-              onChange={(e) => setInputData(e.target.value)}
-          />
-          <button onClick={handleParseClick}>Parse</button>
-          <FlowChart graphs={graphs} />
-      </div>
-  );
+    return (
+        <div className="App">
+            <textarea 
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+            />
+            <button onClick={handleParseClick}>Parse</button>
+            <FlowChart graphs={graphs} />
+        </div>
+    );
 }
 
 export default App;
+
