@@ -14,6 +14,7 @@ function ParseBlock(trace, inbox) {
     
     for(let i = 1; i < trace.length; i++){
         let block = trace[i]['block'];
+        console.log(trace[i]);
         if(trace[i]['attributes']['HomeNode'].state != homeNode[homeNode.length - 1].state){
             homeNode[homeNode.length] = { state: trace[i]['attributes']['HomeNode'].state, 
                                             owner:trace[i]['attributes']['HomeNode'].owner,

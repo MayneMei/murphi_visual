@@ -2,7 +2,7 @@
 
 export function parseInbox(trace) {
     const sections = trace.split('----------');
-    const lastSection = sections[sections.length - 2].trim();
+    const lastSection = sections[sections.length - 2];
     const blocks = [];
     if (lastSection === "") {
         return [];

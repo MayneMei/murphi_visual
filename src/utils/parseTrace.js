@@ -16,7 +16,6 @@ export function parseTrace(trace) {
         };
 
         lines.forEach(line => {
-            // 根据行的起始词汇决定如何解析该行
             if (line.startsWith('HomeNode')) {
                 parseHomeNode(line, block);
             } else if (line.startsWith('Procs')) {
@@ -29,7 +28,6 @@ export function parseTrace(trace) {
 
         blocks.push(block);
     });
-    console.log(blocks);
     return blocks;
 }
 
