@@ -1,70 +1,33 @@
-# Getting Started with Create React App
+Great! Based on your input, here is a template for your `README.md` for the "Murphi Trace Visualizer" project. You can adjust or expand upon this template as needed:
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+---
 
-## Available Scripts
+# Murphi Trace Visualizer
 
-In the project directory, you can run:
+## Overview
+Murphi Trace Visualizer is a tool designed to assist developers in debugging by providing a visual representation of traces. This tool aims to simplify the process of understanding and analyzing the flow of execution, making it easier to pinpoint issues and understand complex trace logs.
 
-### `npm start`
+## Features
+- Visual representation of Murphi traces.
+- User-friendly interface for easy navigation and analysis.
+- Supports various formats of trace logs.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Installation
+No specific installation procedures are required. The tool is ready to use upon download.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Usage
+To use the Murphi Trace Visualizer, ensure you have Node Version Manager (nvm) installed with Node.js version 16. Follow these steps:
 
-### `npm test`
+1. Clone the repository or download the source code to your local machine.
+2. Open a terminal and navigate to the project directory.
+3. Run `nvm use 16` to switch to Node.js version 16.
+4. Start the application by running `npm start`.
+5. For the trace, please copy from `Startstate Startstate 0 fired.` to `End of the error trace.`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Dependencies
+- Node.js (Version 16)
+- NPM (Node Package Manager)
 
-### `npm run build`
+## Contributing
+Contributions to the Murphi Trace Visualizer are welcome. If you have ideas for improvements or have found a bug, please open an issue or submit a pull request.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)

@@ -6,12 +6,8 @@ import * as joint from 'jointjs';
 
 
 function ParseBlock(trace, inbox) {
-    console.log(trace[0]);
-    console.log("INBOX");
-    console.log(inbox);
     let currentState = initializeState(trace[0]);
 
-    // const transitions = [];
     const processors = { ...currentState.procs };
 
     let homeNode = [...currentState.homeNode];
@@ -52,13 +48,12 @@ function ParseBlock(trace, inbox) {
     } else if (message.includes("WBReq")) {
         return 'blue';
     } else if (message.includes("WBReq")) {
-        return 'WBAck';
+        return 'gray';
     }
     return 'white';
   };
 
-//   console.log(processors);
-//   console.log(homeNode);
+
   for (let procName in processors) {
     if (!graphs[procName]) {
         graphs[procName] = new joint.dia.Graph();
@@ -122,6 +117,7 @@ function ParseBlock(trace, inbox) {
     });
 }
 
+// add homenode graph
 let xOffsetGlobal = 60;
 if (!graphs['HomeNode']) {
   graphs['HomeNode'] = new joint.dia.Graph();
@@ -150,8 +146,6 @@ homeNode.forEach((homeNodeInstance, index) => {
     var actionText;
     var source;
     var orderID;
-    console.log("trace[homeNodeInstance['Order id']");
-    console.log(homeNodeInstance['Order id']);
     if(trace[homeNodeInstance['Order id']].block > 0){
         if(trace[homeNodeInstance['Order id'] - 1] && 
         trace[homeNodeInstance['Order id'] - 1].attributes &&
@@ -187,7 +181,7 @@ homeNode.forEach((homeNodeInstance, index) => {
     xOffsetGlobal = xOffsetGlobal + 600; // Adjust the gap between different homeNode instances
 });
 
-
+// add current inbox graph
     if (!graphs['Inbox']) {
         graphs['Inbox'] = new joint.dia.Graph();
     }
@@ -239,13 +233,11 @@ homeNode.forEach((homeNodeInstance, index) => {
             messageRect.addTo(graphs['Inbox']);
         });
     
-        // No need to adjust yOffset here because we want a horizontal layout
     });
     
 
   return {
-        graphs: graphs,
-    //   transitions: transitions 
+        graphs: graphs, 
   };
 }
 
@@ -265,29 +257,24 @@ function initializeState(startState) {
   // Populate HomeNode based on the first 3 lines
   const homeNode = [{ ...defaultHomeNode }];
 
-  // console.log(lines[1].split(':')[1]);
-  // console.log(lines[2].split(':')[1]);
-  // console.log(lines[3].split(':')[1]);
     homeNode[0].state = startState['attributes']['HomeNode'].state;
     homeNode[0].owner = startState['attributes']['HomeNode'].owner;
     homeNode[0].val = startState['attributes']['HomeNode'].val;
     homeNode[0]['Order id'] = startState['block'];
-  // console.log(homeNode);
-  console.log(homeNode);
-//   // Default attributes for Procs
+
     const defaultProc = {
         state: undefined,
         val: undefined,
         "Order id": startState['block'],
     };
 
-//   // Initialize processors
+   // Initialize processors
     const procs = {};
     const procsArray = startState['attributes']['Procs'];
     for(let i =0; i < startState['attributes']['Procs'].length; i++){
         const procName = Object.keys(procsArray[i])[0];
         if (!procs[procName]) {
-            procs[procName] = []; // Initialize as an array if not present
+            procs[procName] = []; 
         }
         procs[procName][0] = { ...defaultProc };
         procs[procName][0].state = procsArray[i].state;
@@ -295,12 +282,11 @@ function initializeState(startState) {
         procs[procName][0]['Order id'] = startState['block'];
     }
 
-//   // Combine all in a single state object
+    // Combine all in a single state object
     const initialState = {
         homeNode: homeNode,
         procs: procs
     };
-    console.log(initialState);
     return initialState;
 }
 
@@ -311,7 +297,7 @@ function App() {
 
     const handleParseClick = () => {
         const parsedBlock = parseTrace(inputData);
-        const parsedInbox = parseInbox(inputData); // Parse the inbox data
+        const parsedInbox = parseInbox(inputData);
 
         // Process the trace and inbox data
         const parsedData = ParseBlock(parsedBlock, parsedInbox);

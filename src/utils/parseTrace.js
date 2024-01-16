@@ -6,12 +6,12 @@ export function parseTrace(trace) {
 
     sections.forEach((section, index) => {
         if (section.trim() === "") {
-            return; // 跳过空白部分
+            return; 
         }
 
         const lines = section.trim().split('\n');
         let block = {
-            block: index, // 块编号从 0 开始
+            block: index,
             attributes: {}
         };
 
@@ -25,9 +25,6 @@ export function parseTrace(trace) {
             else if (line.startsWith('Net')) {
                 parseNet(line, block);
             }
-            // else if (line.startsWith('InBox')) {
-            //     parseInBox(line, block);
-            // } 
         });
 
         blocks.push(block);
@@ -37,29 +34,22 @@ export function parseTrace(trace) {
 }
 
 function parseHomeNode(line, block) {
-    // 将行分割为键和值，然后提取属性和值
     const [key, value] = line.split(':').map(s => s.trim());
     const attribute = key.split('.')[1];
-    // 确保 HomeNode 对象存在并更新其属性
     block.attributes.HomeNode = block.attributes.HomeNode || {};
     block.attributes.HomeNode[attribute] = value;
 }
 
 function parseProcessor(line, block) {
-    // 解析处理器行，并将其分割为键和值
     const [procKey, value] = line.split(':').map(s => s.trim());
 
-    // 正则表达式匹配处理器名称，例如 Proc_1, Proc_2
     const procMatch = procKey.match(/\[([^\]]+)\]/);
     if (!procMatch) {
-        return; // 如果没有匹配到处理器名称，不进行进一步处理
+        return;
     }
     const proc = procMatch[1];
-
-    // 提取属性名称，例如 state, val
     const attribute = procKey.split('.').pop();
 
-    // 创建或更新特定处理器的属性
     block.attributes.Procs = block.attributes.Procs || [];
     let procObj = block.attributes.Procs.find(p => Object.keys(p)[0] === proc);
     if (!procObj) {
@@ -69,41 +59,11 @@ function parseProcessor(line, block) {
     procObj[proc][attribute] = value;
 }
 
-
-// function parseInBox(line, block) {
-//     // Split the line into key and value
-//     const [inboxKey, value] = line.split(':').map(s => s.trim());
-//     console.log(line);
-//     // Extract the inbox type, index, and property name
-//     const inboxMatch = inboxKey.match(/InBox\[([^\]]+)\]\[(\d+)\]\.(\w+)/);
-//     console.log(inboxMatch);
-//     if (!inboxMatch) {
-//         return; // If the pattern does not match, skip this line
-//     }
-//     const [, inboxType, index, property] = inboxMatch;
-
-//     // Ensure the structure for storing inbox data is initialized
-//     if (!block.attributes.InBox[inboxType]) {
-//         block.attributes.InBox[inboxType] = [];
-//     }
-
-//     // Ensure the specific index for this inbox type is initialized
-//     if (!block.attributes.InBox[inboxType][index]) {
-//         block.attributes.InBox[inboxType][index] = {};
-//     }
-
-//     // Store the property and its value
-//     block.attributes.InBox[inboxType][index][property] = value;
-// }
-
 function parseNet(line, block) {
-    // 提取并分割行为键和值
     const [netKey, value] = line.split(':').map(s => s.trim());
-    // 进一步分割键来获取 Net 的属性和标识
     const [net, attribute] = netKey.split('}').map(s => s.trim());
-    const netId = net.split('[')[1].split(']')[0];  // 提取 Proc_1 之类的标识
+    const netId = net.split('[')[1].split(']')[0];
 
-    // 创建或更新特定 Net 的属性
     block.attributes.Net = block.attributes.Net || [];
     let netObj = block.attributes.Net.find(n => Object.keys(n)[0] === netId);
     if (!netObj) {
@@ -112,5 +72,3 @@ function parseNet(line, block) {
     }
     netObj[netId][attribute] = value;
 }
-
-// export default parseTrace;

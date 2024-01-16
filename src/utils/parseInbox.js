@@ -5,7 +5,7 @@ export function parseInbox(trace) {
     const lastSection = sections[sections.length - 2].trim();
     const blocks = [];
     if (lastSection === "") {
-        return []; // Return an empty array if the last section is empty
+        return [];
     }
 
     const lines = lastSection.split('\n');
