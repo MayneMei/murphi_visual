@@ -23,6 +23,7 @@ To use the Murphi Trace Visualizer, ensure you have Node Version Manager (nvm) i
 3. Run `nvm use 16` to switch to Node.js version 16.
 4. Start the application by running `npm start`.
 5. For the trace, please copy from `Startstate Startstate 0 fired.` to `End of the error trace.`
+6. For better use, please use "-tf" command of Murphi Compiler to write full states in trace.
 
 ## Dependencies
 - Node.js (Version 16)
